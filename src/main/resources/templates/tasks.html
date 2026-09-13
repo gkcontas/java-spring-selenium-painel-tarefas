@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Task Board</title>
+    <style>
+        body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 16px; color: #1a1a1a; background: #ffffff; }
+        h1 { font-size: 1.5rem; margin-bottom: 24px; }
+        .add-task-form { display: flex; gap: 8px; margin-bottom: 24px; }
+        .add-task-form input[type="text"] { flex: 1; padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px; }
+        .add-task-form button { padding: 10px 18px; border: 0; border-radius: 4px; background: #2563eb; color: #fff; cursor: pointer; }
+        .task-list { list-style: none; padding: 0; }
+        .task-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px; border-bottom: 1px solid #e5e5e5; }
+        .task-item.completed .task-title { text-decoration: line-through; color: #999; }
+        .task-actions form { display: inline; margin-left: 8px; }
+        .task-actions button { padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; }
+        .complete-button { color: #15803d; }
+        .delete-button { color: #b91c1c; }
+        .empty-state { color: #888; padding: 12px 4px; }
+    </style>
+</head>
+<body>
+<h1>Task Board</h1>
+
+<form class="add-task-form" id="task-form" th:action="@{/tasks}" method="post">
+    <input type="text" id="task-title-input" name="title" placeholder="What needs to be done?" required="required" maxlength="200"/>
+    <button type="submit" id="add-task-button">Add</button>
+</form>
+
+<ul class="task-list" id="task-list">
+    <li class="empty-state" id="empty-state" th:if="${tasks.isEmpty()}">No tasks yet — add one above.</li>
+    <li class="task-item" th:each="task : ${tasks}" th:id="'task-' + ${task.id}" th:classappend="${task.completed} ? ' completed' : ''">
+        <span class="task-title" th:text="${task.title}">Task title</span>
+        <span class="task-actions">
+            <form th:if="${!task.completed}" th:action="@{/tasks/{id}/complete(id=${task.id})}" method="post">
+                <button type="submit" class="complete-button">Complete</button>
+            </form>
+            <form th:action="@{/tasks/{id}/delete(id=${task.id})}" method="post">
+                <button type="submit" class="delete-button">Delete</button>
+            </form>
+        </span>
+    </li>
+</ul>
+</body>
+</html>
