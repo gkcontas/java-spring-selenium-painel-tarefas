@@ -36,7 +36,19 @@ Aplicação web server-rendered simples (estilo to-do list) em Java com Spring B
 - Testes de integração (`integration`) sobem um PostgreSQL real via Testcontainers.
 - Testes E2E (`e2e`) sobem PostgreSQL **e** um navegador Chrome real, ambos em containers via Testcontainers (`testcontainers-selenium`), e dirigem o navegador contra a aplicação real rodando na porta aleatória de teste — não é necessário ter Chrome instalado na máquina.
 
-> **Nota sobre o ambiente de desenvolvimento usado para este projeto**: neste sandbox específico, os testes baseados em Testcontainers (integração e E2E) não executam — o cliente Docker embutido no Testcontainers faz um "ping" inicial contra uma versão de API antiga (1.32), que o daemon Docker deste ambiente (bem mais novo) rejeita (`client version 1.32 is too old`). Isso não é um problema do código: os testes unitários passam normalmente, tudo compila, e a mesma limitação apareceu no [projeto 3](../java-spring-kafka-pipeline-eventos-cliques). Em uma máquina com uma instalação padrão do Docker, os testes de integração e E2E devem rodar normalmente.
+Suíte completa: **10 testes, todos passando** — 6 unitários, 3 de integração e 1 E2E dirigindo um Chrome real em container.
+
+### Nota sobre Testcontainers e Docker Engine recente
+
+Se os testes falharem com `client version 1.32 is too old. Minimum supported API version is 1.40`, a causa é o `docker-java` embutido no Testcontainers negociar a API 1.32, abaixo do mínimo aceito pelo Docker Engine 29+. Correção global, de uma linha:
+
+```bash
+echo 'api.version=1.44' > ~/.docker-java.properties
+```
+
+### Nota sobre a ordem de criação do container do browser
+
+O `BrowserWebDriverContainer` **não** é declarado como `@Container` estático, e isso é deliberado. O `Testcontainers.exposeHostPorts(port)` torna o host alcançável de dentro dos containers pelo nome `host.testcontainers.internal`, mas esse mapeamento é aplicado a cada container **no momento em que ele é criado**. Um browser declarado como `@Container` estático sobe antes de qualquer método de teste rodar — portanto antes de a porta aleatória da aplicação existir — e nunca receberia o mapeamento: todo `driver.get` falharia com `ERR_NAME_NOT_RESOLVED`. Criá-lo sob demanda, depois do `exposeHostPorts`, é o que faz o nome resolver. Usar uma `server.port` fixa permitiria o container estático, ao custo de colidir com o que o desenvolvedor já tem rodando.
 
 ## Fluxo da aplicação
 
