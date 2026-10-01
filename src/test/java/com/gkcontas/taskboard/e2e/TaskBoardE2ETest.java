@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.List;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,9 +35,21 @@ class TaskBoardE2ETest {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
-    @Container
-    static final BrowserWebDriverContainer<?> BROWSER = new BrowserWebDriverContainer<>("selenium/standalone-chrome:127.0")
-            .withCapabilities(new ChromeOptions());
+    /**
+     * Deliberately NOT a {@code @Container}.
+     *
+     * <p>{@code exposeHostPorts} makes the host reachable from inside containers under
+     * the name {@code host.testcontainers.internal}, but that mapping is wired into each
+     * container when it is <em>created</em>. A browser declared as a static
+     * {@code @Container} starts before any test method runs — and therefore before the
+     * application's random port is even known — so it would never get the mapping and
+     * every {@code driver.get} would fail with ERR_NAME_NOT_RESOLVED.
+     *
+     * <p>Creating it lazily, after {@code exposeHostPorts(port)}, is what makes the host
+     * name resolve. Using a fixed {@code server.port} instead would allow a static
+     * container, at the cost of colliding with whatever the developer has running.
+     */
+    private static BrowserWebDriverContainer<?> browser;
 
     @LocalServerPort
     private int port;
@@ -46,7 +59,12 @@ class TaskBoardE2ETest {
     @BeforeEach
     void setUp() {
         org.testcontainers.Testcontainers.exposeHostPorts(port);
-        driver = new RemoteWebDriver(BROWSER.getSeleniumAddress(), new ChromeOptions());
+        if (browser == null) {
+            browser = new BrowserWebDriverContainer<>("selenium/standalone-chrome:127.0")
+                    .withCapabilities(new ChromeOptions());
+            browser.start();
+        }
+        driver = new RemoteWebDriver(browser.getSeleniumAddress(), new ChromeOptions());
         driver.get(baseUrl() + "/tasks");
     }
 
@@ -54,6 +72,13 @@ class TaskBoardE2ETest {
     void tearDown() {
         if (driver != null) {
             driver.quit();
+        }
+    }
+
+    @AfterAll
+    static void stopBrowser() {
+        if (browser != null) {
+            browser.stop();
         }
     }
 
