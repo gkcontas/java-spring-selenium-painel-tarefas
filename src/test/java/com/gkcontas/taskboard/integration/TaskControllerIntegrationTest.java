@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -73,10 +75,18 @@ class TaskControllerIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * Matches only ids whose suffix is numeric. A plain search for {@code id="task-}
+     * would hit {@code id="task-form"} and {@code id="task-title-input"} first, since
+     * the add-task form is rendered above the list.
+     */
+    private static final Pattern TASK_ID_PATTERN = Pattern.compile("id=\"task-(\\d+)\"");
+
     private Long extractTaskId(String html) {
-        int start = html.indexOf("id=\"task-");
-        int idStart = start + "id=\"task-".length();
-        int idEnd = html.indexOf('"', idStart);
-        return Long.parseLong(html.substring(idStart, idEnd));
+        Matcher matcher = TASK_ID_PATTERN.matcher(html);
+        if (!matcher.find()) {
+            throw new AssertionError("No rendered task id found in the page");
+        }
+        return Long.valueOf(matcher.group(1));
     }
 }
